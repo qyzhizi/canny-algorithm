@@ -11,10 +11,10 @@ import argparse
 from collections import deque
 
 
-def dnorm(x, mu, sd):
+def dnorm(x: int, mu:int , sd:int)-> np.float32:
     return 1 / (np.sqrt(2 * np.pi) * sd) * np.e ** (-np.power((x - mu) / sd, 2) / 2)
 
-def gaussian_kernel(size, sigma=1, verbose=False):
+def gaussian_kernel(size: int, sigma: int=1, verbose: bool=False) -> np.ndarray:
     kernel_1D = np.linspace(-(size // 2), size // 2, size)
     for i in range(size):
         kernel_1D[i] = dnorm(kernel_1D[i], 0, sigma)
@@ -37,7 +37,7 @@ def gaussian_kernel(size, sigma=1, verbose=False):
 
 
 # 对图像进行高斯滤波，平滑图像，去除噪声
-def gaussian_blur(image, kernel_size, verbose=False):
+def gaussian_blur(image: torch.tensor, kernel_size: int, verbose=False) -> torch.tensor:
     if kernel_size % 2 == 1 and kernel_size > 1 and kernel_size < 20:
         kernel = gaussian_kernel(kernel_size, sigma=math.sqrt(kernel_size), verbose=verbose)
         kernel = kernel.reshape((1, 1, kernel_size, kernel_size))
@@ -95,43 +95,46 @@ def functional_conv2d_vertical(im, verbose=False):
     return edge_detect
 
 
-def nms(gradient_magnitude: torch.tensor, gradient_direction_quantized: torch.tensor, verbose=False) -> torch.tensor:
+def nms(gradient_magnitude: torch.tensor, 
+        gradient_direction_quantized: torch.tensor,
+        verbose=False) -> torch.tensor:
     """非极大值抑制"""
 
     nms_edge = torch.zeros_like(gradient_magnitude)
-    # nms_conv_op = torch.nn.Conv2d(in_channels=1,out_channels=3, kernel_size=3, stride=1, padding=1, padding_mode='replicate', bias=False)
-    nms_conv_op = torch.nn.Conv2d(in_channels=1,out_channels=3, kernel_size=3, stride=1, padding=1, bias=False)
+    nms_conv_op = torch.nn.Conv2d(in_channels=1,out_channels=3,
+                                  kernel_size=3, stride=1,
+                                  padding=1, bias=False)
 
-    kernel_direction_quantized_0 = torch.tensor([[[0, 0, 0],[1, 0, 0],[0, 0, 0]],
-                                                 [[0, 0, 0],[0, 1, 0],[0, 0, 0]],
-                                                 [[0, 0, 0],[0, 0, 1],[0, 0, 0]]], dtype=torch.float32)
-    kernel_direction_quantized_1 = torch.tensor([[[0, 0, 1],[0, 0, 0],[0, 0, 0]],
-                                                 [[0, 0, 0],[0, 1, 0],[0, 0, 0]],
-                                                 [[0, 0, 0],[0, 0, 0],[1, 0, 0]]], dtype=torch.float32)
-    kernel_direction_quantized_2 = torch.tensor([[[0, 1, 0],[0, 0, 0],[0, 0, 0]],
-                                                 [[0, 0, 0],[0, 1, 0],[0, 0, 0]],
-                                                 [[0, 0, 0],[0, 0, 0],[0, 1, 0]]], dtype=torch.float32)
-    kernel_direction_quantized_3 = torch.tensor([[[1, 0, 0],[0, 0, 0],[0, 0, 0]],
-                                                 [[0, 0, 0],[0, 1, 0],[0, 0, 0]],
-                                                 [[0, 0, 0],[0, 0, 0],[0, 0, 1]]], dtype=torch.float32)
+    quantized_0_list = [[[0, 0, 0],[1, 0, 0],[0, 0, 0]],
+                        [[0, 0, 0],[0, 1, 0],[0, 0, 0]],
+                        [[0, 0, 0],[0, 0, 1],[0, 0, 0]]]
     
-    kernel_direction_quantized = [kernel_direction_quantized_0,
-                                  kernel_direction_quantized_1,
-                                  kernel_direction_quantized_2,
-                                  kernel_direction_quantized_3]
+    quantized_1_list = [[[0, 1, 0],[0, 0, 0],[0, 0, 0]],
+                        [[0, 0, 0],[0, 1, 0],[0, 0, 0]],
+                        [[0, 0, 0],[0, 0, 0],[0, 1, 0]]]
+
+    quantized_2_list = [[[0, 1, 0],[0, 0, 0],[0, 0, 0]],
+                        [[0, 0, 0],[0, 1, 0],[0, 0, 0]],
+                        [[0, 0, 0],[0, 0, 0],[0, 1, 0]]]
+    
+    quantized_3_list = [[[1, 0, 0],[0, 0, 0],[0, 0, 0]],
+                        [[0, 0, 0],[0, 1, 0],[0, 0, 0]],
+                        [[0, 0, 0],[0, 0, 0],[0, 0, 1]]]    
+    
+    kernel_0 = torch.tensor(quantized_0_list, dtype=torch.float32)
+    kernel_1 = torch.tensor(quantized_1_list, dtype=torch.float32)
+    kernel_2 = torch.tensor(quantized_2_list, dtype=torch.float32)
+    kernel_3 = torch.tensor(quantized_3_list, dtype=torch.float32)
+    
+    kernel_direction_quantized = [kernel_0,
+                                  kernel_1,
+                                  kernel_2,
+                                  kernel_3]
     for i in range(4):
         
         mask_i = (gradient_direction_quantized == i).int()
         if verbose:
             print("mask_i: ", mask_i)
-        # padding mask_i  padding =1
-        # mask_i = F.pad(mask_i, (1, 1, 1, 1), mode='constant', value=0)
-        
-        
-        # selected_gradient_magnitude = gradient_magnitude * mask_i
-        # print("selected: ", selected_gradient_magnitude)
-        # nms_edge_i = torch.nn.functional.max_pool2d(selected_gradient_magnitude, kernel_size=3,
-        #                                               stride=1, padding=1)
         nms_conv_op.weight.data = kernel_direction_quantized[i].reshape((3, 1, 3, 3))
         nms_direction_conv_i = nms_conv_op(gradient_magnitude)
         nms_direction_conv_mask_i = nms_direction_conv_i * mask_i
@@ -140,7 +143,8 @@ def nms(gradient_magnitude: torch.tensor, gradient_direction_quantized: torch.te
         if verbose:
             print("nms_direction_conv_mask_max_i: ", nms_direction_conv_mask_max_i)
             print("nms_direction_i: ", nms_direction_conv_mask_max_i)
-        nms_edge = nms_edge + ((gradient_magnitude == nms_direction_conv_mask_max_i) * nms_direction_conv_mask_max_i) 
+        nms_edge = nms_edge + ((gradient_magnitude == nms_direction_conv_mask_max_i) *
+                               nms_direction_conv_mask_max_i) 
 
     if verbose:
         print("nms_edge: ", nms_edge)
@@ -281,11 +285,11 @@ def save_edge_detect_and_origin_image_as_image(edge_detect, origin_image_path, s
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("-v", "--verbose", action='store_true', default=False, help="show processed image of each step")
     ap.add_argument("-i", "--image", required=True, default="lena.png", help="Path to the image")
-    ap.add_argument("-v", "--verbose", action='store_true', default=False, help="Path to the image")
-    ap.add_argument("-gk", "--gaussian_kernel_size", type=int, default=3, help="Path to the image")
-    ap.add_argument("-L", "--threshold_low", type=int, default=20, help="Path to the image")
-    ap.add_argument("-H", "--threshold_high", type=int, default=50, help="Path to the image")
+    ap.add_argument("-gk", "--gaussian_kernel_size", type=int, default=3, help="gaussian kernel size")
+    ap.add_argument("-L", "--threshold_low", type=int, default=100, help="low threshold")
+    ap.add_argument("-H", "--threshold_high", type=int, default=200, help="high threshold")
     args = vars(ap.parse_args())
     verbose = args["verbose"]
     threshold_low = args["threshold_low"]
@@ -325,10 +329,10 @@ def main():
     # 非极大值抑制
     nms_edge = nms(gradient_magnitude, gradient_direction_quantized, verbose=verbose)
 
-    # 阈值处理
-    # edge_detect = threshold(nms_edge, low=threshold_low, high=threshold_high, weak=50, strong=255)
+    # 普通双边阈值处理
+    edge_detect = threshold(nms_edge, low=threshold_low, high=threshold_high, weak=50, strong=255)
     # 滞后阈值
-    edge_detect = hysteresis_threshold(nms_edge, low=threshold_low, high=threshold_high)
+    # edge_detect = hysteresis_threshold(nms_edge, low=threshold_low, high=threshold_high)
 
     if verbose:
         print("edge_detect.shape: ", edge_detect.shape, "im.shape: ", im.shape)
@@ -337,9 +341,9 @@ def main():
         plt.show()
 
     # 保存图片
-    save_edge_detect_as_image(edge_detect, "data/edge_detect.png", verbose=verbose)
+    save_edge_detect_as_image(edge_detect, "data/pytorch_edge_detect.png", verbose=verbose)
     save_edge_detect_and_origin_image_as_image(edge_detect, args["image"], 
-                                               "data/edge_detect_and_origin_image.png", verbose=verbose)
+                                               "data/pytorch_edge_detect_and_origin_image.png", verbose=verbose)
 if __name__ == "__main__":
     start_time = time.time()
     print("programming strat")

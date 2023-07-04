@@ -5,9 +5,9 @@ from matplotlib import pyplot as plt
 import time
 
 if __name__ == '__main__':
-    img = cv2.imread('lena.png',0)
+    img = cv2.imread('data/lena.png',0)
     start_time = time.time()
-    edges = cv2.Canny(img,80,100)
+    edges = cv2.Canny(img,100,200)
     print("time: ", time.time() - start_time)
     plt.subplot(121),plt.imshow(img,cmap = 'gray')
     plt.title('Original Image'), plt.xticks([]), plt.yticks([])
@@ -17,6 +17,6 @@ if __name__ == '__main__':
     print("end")
 
     # 保存图片
-    cv2.imwrite("opencv-lena-result.png", edges)
+    cv2.imwrite("data/opencv_edge_detect.png", edges)
     
 
