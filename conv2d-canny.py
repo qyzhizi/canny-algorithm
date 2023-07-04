@@ -162,13 +162,18 @@ def nms(gradient_magnitude, gradient_direction_quantized, verbose=False):
     return nms_tensor
 
 
-def get_gradient_magnitude(gradient_v, gradient_h, verbose=False):
+def get_gradient_magnitude(gradient_v, gradient_h, verbose=False, use_l2_norm=False):
     """计算梯度幅值
     """
     # 计算梯度的幅值
-    gradient_magnitude = torch.sqrt(gradient_v**2 + gradient_h**2)
+    if use_l2_norm:
+        # use l2 norm
+        gradient_magnitude = torch.sqrt(gradient_v**2 + gradient_h**2)
+    else:
+        # use l1 norm
+        gradient_magnitude = torch.abs(gradient_v) + torch.abs(gradient_h)
     # 将梯度幅值限制在0-255之间
-    gradient_magnitude = gradient_magnitude * 255.0 / gradient_magnitude.max()
+    # gradient_magnitude = gradient_magnitude * 255.0 / gradient_magnitude.max()
 
     if verbose:
         plt.imshow(gradient_magnitude.squeeze().numpy(), cmap='gray')
