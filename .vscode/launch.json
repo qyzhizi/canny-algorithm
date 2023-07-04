@@ -12,7 +12,9 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             // "args": ["-v","--image", "lena.png"],
-            "args": ["-v","--image", "data/test-small.png","-gk","0","-L","10","-H","50"],
+            // "args": ["-v","--image", "data/test-small.png","-gk","0","-L","10","-H","100"],
+            "args": ["-v","--image", "data/lena.png","-gk","0","-L","100","-H","200"],
+            // "args": ["--image", "data/test-small.png","-gk","0","-L","10","-H","50"],
             // "args": ["-v","--image", "test.png"]
             // "args": ["-v","--image", "edge_2.jpg", "--color_image", "lena.png", "--output", "output_color.jpg"]
         }
